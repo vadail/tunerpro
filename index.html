@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-width=1.0">
-    <title>Afinador Neón Pro</title>
+    
+    <title>TunerPro</title>
+    
     <link rel="icon" type="image/png" href="favicon.png">
-    <meta name="apple-mobile-web-app-title" content="TunerPro">
+    <link rel="apple-touch-icon" href="favicon.png"> <meta name="apple-mobile-web-app-title" content="TunerPro">
     <meta name="application-name" content="TunerPro">
-
-    <link rel="apple-touch-icon" href="favicon.png">
-
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0a0e">
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
 
@@ -35,6 +34,7 @@
             font-family: 'Nunito', sans-serif; background-color: var(--bg-dark);
             color: var(--text-main); margin: 0; padding: 0;
             display: flex; justify-content: center; height: 100vh; overflow: hidden;
+            overscroll-behavior-y: none;
         }
 
         .app-container {
@@ -116,7 +116,7 @@
         .instrument-layout { display: flex; flex-grow: 1; padding: 20px; }
         .string-buttons { display: flex; flex-direction: column; justify-content: space-evenly; gap: 10px; }
         .string-wrapper { display: flex; align-items: center; gap: 15px; }
-        .string-label { color: var(--text-muted); font-size: 12px; width: 45px; text-align: right; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
+        .string-label { color: var(--danger); font-size: 12px; width: 50px; text-align: right; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); font-weight: bold;}
         .string-btn {
             width: 50px; height: 50px; border-radius: 50%; background-color: var(--bg-panel); border: 2px solid #333;
             color: var(--text-main); font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;
@@ -174,7 +174,7 @@
     <div class="tuning-controls" id="tuning-controls">
         <select id="tuning-list"></select>
         <div class="layout-toggle" id="layout-toggle" style="display: none;">
-            <button class="layout-btn active" id="btn-inline" onclick="setGuitarLayout('inline')">6L</button>
+            <button class="layout-btn" id="btn-inline" onclick="setGuitarLayout('inline')">6L</button>
             <button class="layout-btn" id="btn-3x3" onclick="setGuitarLayout('3x3')">3x3</button>
         </div>
         <button class="add-btn" onclick="openModal()">+</button>
@@ -184,7 +184,7 @@
         <canvas id="waves-canvas"></canvas>
 
         <div class="instrument-image-container">
-            <img id="instrument-img" src="img-guitar-3x3.png" alt="Instrumento">
+            <img id="instrument-img" src="" alt="Instrumento">
         </div>
         
         <div class="dial-container" id="dial">
@@ -203,16 +203,16 @@
     </div>
 
     <div class="bottom-nav">
-        <button class="nav-item active" onclick="changeInstrument('guitar')">
+        <button id="nav-guitar" class="nav-item" onclick="changeInstrument('guitar')">
             <svg viewBox="0 0 24 24"><path d="M8 12l-4 4 4 4 4-4-4-4z"/><path d="M12 8l8-8"/><path d="M16 4l4 4"/></svg> Guitarra
         </button>
-        <button class="nav-item" onclick="changeInstrument('ukulele')">
+        <button id="nav-ukulele" class="nav-item" onclick="changeInstrument('ukulele')">
             <svg viewBox="0 0 24 24"><circle cx="8" cy="16" r="4"/><path d="M11 13l6-6"/><path d="M15 5l4 4"/></svg> Ukelele
         </button>
-        <button class="nav-item" onclick="changeInstrument('bass')">
+        <button id="nav-bass" class="nav-item" onclick="changeInstrument('bass')">
             <svg viewBox="0 0 24 24"><path d="M7 13l-3 3 4 4 3-3-4-4z"/><path d="M11 9l9-9"/><path d="M16 2l6 6"/></svg> Bajo
         </button>
-        <button class="nav-item" onclick="changeInstrument('drums')">
+        <button id="nav-drums" class="nav-item" onclick="changeInstrument('drums')">
             <svg viewBox="0 0 24 24"><ellipse cx="12" cy="10" rx="8" ry="3"/><path d="M4 10v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg> Batería
         </button>
     </div>
@@ -373,7 +373,7 @@
         osc.start(); osc.stop(synthContext.currentTime + 1.0);
     }
 
-    // --- DATOS GLOBALES ---
+    // --- DATOS GLOBALES Y ESTADO ---
     const defaultTunings = {
         guitar: [{ name: "Estándar", notes: ["E2", "A2", "D3", "G3", "B3", "E4"] }],
         ukulele: [{ name: "Estándar", notes: ["G4", "C4", "E4", "A4"] }],
@@ -395,8 +395,9 @@
         drums: ["Bombo", "Caja", "Tom 1", "Tom 2", "Base"]
     };
 
-    let currentInstrument = 'guitar'; 
-    let currentLayout = '3x3'; 
+    // Recuperamos de LocalStorage el último instrumento y layout utilizado
+    let currentInstrument = localStorage.getItem('last_instrument') || 'guitar'; 
+    let currentLayout = localStorage.getItem('last_layout') || '3x3'; 
     let selectedStringIndex = -1; 
     let isListening = false;
     let lastPerfectTime = 0; 
@@ -410,7 +411,6 @@
     const freqDisplay = document.getElementById('freq-display');
     const tuningListSelect = document.getElementById('tuning-list');
 
-    // [CORRECCIÓN] Separamos la actualización de opciones para no romper el evento "change"
     function updateTuningDropdown() {
         let prevValue = tuningListSelect.value;
         tuningListSelect.innerHTML = '';
@@ -427,11 +427,11 @@
         }
     }
 
-    // [CORRECCIÓN] El evento "change" ahora solo redibuja las cuerdas, no borra el desplegable
     tuningListSelect.addEventListener('change', (e) => { renderStrings(); });
 
     function setGuitarLayout(layoutType) {
         currentLayout = layoutType;
+        localStorage.setItem('last_layout', currentLayout); // Guarda en memoria
         document.getElementById('btn-inline').classList.toggle('active', layoutType === 'inline');
         document.getElementById('btn-3x3').classList.toggle('active', layoutType === '3x3');
         renderStrings();
@@ -495,9 +495,12 @@
 
     function changeInstrument(instName) {
         currentInstrument = instName;
+        localStorage.setItem('last_instrument', currentInstrument); // Guarda en memoria
+        
         document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-        event.currentTarget.classList.add('active');
-        tuningListSelect.value = 0; // Vuelve a estándar al cambiar de instrumento
+        document.getElementById('nav-' + currentInstrument).classList.add('active'); // Actualiza visualmente
+        
+        tuningListSelect.value = 0; 
         renderInstrument();
     }
 
@@ -512,12 +515,10 @@
         
         document.getElementById('modal-title').innerText = `Afinación ${currentInstrument.charAt(0).toUpperCase() + currentInstrument.slice(1)}`;
 
-        // [CORRECCIÓN]: Aquí obligamos a que el bucle ponga siempre la 1ª Cuerda arriba y la 6ª abajo.
         for(let i = baseNotes.length - 1; i >= 0; i--) {
             let row = document.createElement('div'); row.className = 'string-select-row';
             
             let labelText = labels[i] || `${i+1}ª`;
-            // Etiquetas explícitas solo para guitarra/bajo/uke
             if (currentInstrument !== 'drums') {
                 if (i === baseNotes.length - 1) labelText += " (Aguda)";
                 if (i === 0) labelText += " (Grave)";
@@ -535,7 +536,7 @@
                 let stdNoteAbsolute = getAbsoluteIndex(baseNotes[i]);
                 let select = document.createElement('select'); select.id = `input-c${i}`;
 
-                for(let offset = -5; offset <= 5; offset++) {
+                for(let offset = 5; offset >= -5; offset--) {
                     let noteData = getNoteInfoFromIndex(stdNoteAbsolute + offset);
                     let option = document.createElement('option');
                     option.value = noteData.internalName; 
@@ -557,14 +558,12 @@
         if(!name) { alert("Ponle un nombre a tu afinación"); return; }
         let notes = []; let baseNotes = defaultTunings[currentInstrument][0].notes;
         
-        // El bucle de guardado recoge desde el índice 0 (E2, Grave) hasta el 5 (E4, Agudo)
         for(let i=0; i < baseNotes.length; i++) notes.push(document.getElementById(`input-c${i}`).value);
         
         appData[currentInstrument].push({ name: name, notes: notes });
         localStorage.setItem(`tunings_${currentInstrument}_v7`, JSON.stringify(appData[currentInstrument]));
         document.getElementById('song-name').value = '';
         
-        // Actualizamos y forzamos a mostrar la nueva afinación
         updateTuningDropdown(); 
         tuningListSelect.value = appData[currentInstrument].length - 1; 
         renderStrings();
@@ -592,7 +591,7 @@
             
             if (selectedStringIndex === -1) {
                 let tuningNotes = appData[currentInstrument][tuningListSelect.value || 0].notes;
-                selectString(0, tuningNotes); // Empieza por la 6ª (Grave) por defecto
+                selectString(0, tuningNotes); 
             }
             resizeCanvas();
             updatePitch();
@@ -697,7 +696,13 @@
         }
     }
 
-    document.getElementById('btn-3x3').click();
+    // Inicialización según la memoria guardada
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    document.getElementById('nav-' + currentInstrument).classList.add('active');
+    
+    document.getElementById('btn-inline').classList.toggle('active', currentLayout === 'inline');
+    document.getElementById('btn-3x3').classList.toggle('active', currentLayout === '3x3');
+    
     renderInstrument();
 </script>
 
