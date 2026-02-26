@@ -38,7 +38,6 @@
             overscroll-behavior-y: none;
         }
 
-        /* Bloqueo estricto de proporciones para evitar que se aplaste en horizontal */
         .app-container {
             width: 100%; max-width: 450px; height: 100vh; min-height: 650px; 
             display: flex; flex-direction: column;
@@ -106,7 +105,7 @@
         .needle {
             position: absolute; bottom: -60px; width: 4px; height: 180px;
             background-color: var(--text-muted); border-radius: 2px; transform-origin: bottom center; transform: rotate(0deg);
-            z-index: 12; /* Aguja por debajo de los textos */
+            z-index: 12; 
         }
         
         .status-perfect .target-circle { border-color: var(--primary); box-shadow: 0 0 20px var(--primary-glow), inset 0 0 10px var(--primary-glow); color: var(--primary); text-shadow: 0 0 5px var(--primary); }
@@ -114,7 +113,6 @@
         .status-wrong .target-circle { border-color: var(--danger); box-shadow: 0 0 10px var(--danger-glow); }
         .status-wrong .needle { background-color: var(--danger); box-shadow: 0 0 15px var(--danger-glow); }
 
-        /* TEXTOS CON HALO OSCURO Y Z-INDEX ALTO PARA LEGIBILIDAD */
         #feedback-text { 
             text-align: center; font-size: 20px; font-weight: bold; color: var(--text-muted); min-height: 25px; transition: 0.2s;
             position: relative; z-index: 50; 
@@ -184,7 +182,7 @@
     <div class="tuning-controls" id="tuning-controls">
         <select id="tuning-list"></select>
         <div class="layout-toggle" id="layout-toggle" style="display: none;">
-            <button class="layout-btn" id="btn-inline" onclick="setGuitarLayout('inline')">6L</button>
+            <button class="layout-btn active" id="btn-inline" onclick="setGuitarLayout('inline')">6L</button>
             <button class="layout-btn" id="btn-3x3" onclick="setGuitarLayout('3x3')">3x3</button>
         </div>
         <button class="add-btn" onclick="openModal()">+</button>
@@ -233,7 +231,6 @@
 </div>
 
 <script>
-    // --- LÓGICA MUSICAL ---
     const baseNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     const displayNotes = ["C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
 
@@ -257,7 +254,6 @@
         return { r, g, b };
     }
 
-    // --- MOTOR GRÁFICO CANVAS ---
     const canvas = document.getElementById('waves-canvas'); const ctx = canvas.getContext('2d');
     const tunerArea = document.getElementById('tuner-area');
     let trailSegments = []; let currentSegment = null; const FALL_SPEED = 3.0; const MAX_AGE = 60; 
@@ -290,7 +286,6 @@
         }
     }
 
-    // --- SINTETIZADOR CONTINUO ---
     let synthContext;
     let hasPlayedSuccess = false; 
     let isTonePlaying = false;
@@ -353,7 +348,6 @@
         osc.start(); osc.stop(synthContext.currentTime + 1.0);
     }
 
-    // --- DATOS GLOBALES ---
     const defaultTunings = {
         guitar: [{ name: "Estándar", notes: ["E2", "A2", "D3", "G3", "B3", "E4"] }],
         ukulele: [{ name: "Estándar", notes: ["G4", "C4", "E4", "A4"] }],
@@ -379,7 +373,6 @@
     let isListening = false;
     let lastPerfectTime = 0; 
 
-    // --- DOM UI ---
     const btnContainer = document.getElementById('string-buttons');
     const instrumentImg = document.getElementById('instrument-img');
     const needle = document.getElementById('needle');
@@ -466,7 +459,6 @@
         tuningListSelect.value = 0; renderInstrument();
     }
 
-    // --- MODAL ---
     const modal = document.getElementById('modal'); const customFormContainer = document.getElementById('custom-form-container');
     function openModal() {
         customFormContainer.innerHTML = '';
@@ -517,34 +509,46 @@
         renderStrings(); closeModal();
     }
 
-    // --- AUDIO Y DETECCIÓN AVANZADA ---
     let audioContext, analyser, microphone;
     let pitchHistory = []; let currentDegrees = 0; 
+    let lastValidPitch = 0; 
 
     document.getElementById('start-btn').addEventListener('click', async function() {
         if(isListening) return;
         
-        // Bloqueo Nativo de Rotación (Para Android PWA)
         try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('portrait').catch(e=>{}); } catch(e){}
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert("Tu navegador bloquea el micrófono. Asegúrate de estar en HTTPS y de haber dado permisos.");
+            return;
+        }
 
         try {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioContext.state === 'suspended') audioContext.resume(); 
-            let stream;
-            try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, autoGainControl: false, noiseSuppression: false } }); } 
-            catch (e) { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+            if (audioContext.state === 'suspended') await audioContext.resume(); 
+            
+            // [CORRECCIÓN CRÍTICA]: Eliminamos las restricciones complejas que hacían petar a Safari y Chrome móvil.
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
             microphone = audioContext.createMediaStreamSource(stream);
             analyser = audioContext.createAnalyser(); analyser.fftSize = 2048;
             microphone.connect(analyser); isListening = true;
             this.style.display = 'none'; 
             
+            // Auto-selecciona pero NO REPRODUCE SONIDO al arrancar
             if (selectedStringIndex === -1) {
                 let tuningNotes = appData[currentInstrument][tuningListSelect.value || 0].notes;
-                selectString(0, tuningNotes); 
+                selectedStringIndex = 0; // Cuerda 6 por defecto
+                let visualIndex = tuningNotes.length - 1;
+                document.querySelectorAll('.string-btn').forEach((btn, i) => btn.classList.toggle('active', i === visualIndex));
+                let targetFreq = getTargetFreq(tuningNotes[0]);
+                feedbackText.innerText = `Objetivo: ${targetFreq.toFixed(2)} Hz`;
+                freqDisplay.innerText = "-- Hz";
             }
             resizeCanvas(); updatePitch();
-        } catch (err) { alert("Error con el micrófono. Comprueba los permisos de tu navegador."); }
+        } catch (err) { 
+            alert("Error con el micrófono: " + err.name + " - " + err.message); 
+        }
     });
 
     function autoCorrelate(buf, sampleRate) {
@@ -583,7 +587,7 @@
         let ac = autoCorrelate(buffer, audioContext.sampleRate);
 
         if (ac !== -1) {
-            // [MEJORA SNAPPY]: Buffer de 2 muestras máximo para respuesta instantánea
+            // [MEJORA SNAPPY]: Buffer de solo 2 muestras. Respuesta al instante.
             pitchHistory.push(ac);
             if(pitchHistory.length > 2) pitchHistory.shift(); 
             
@@ -603,7 +607,7 @@
             if (isPerfectRealTime) lastPerfectTime = Date.now();
             let isPerfectDisplay = (Date.now() - lastPerfectTime) < 1500;
 
-            // [MEJORA SNAPPY]: Velocidad de interpolación altísima para igualar a apps pro
+            // [MEJORA SNAPPY]: Velocidad de interpolación altísima (0.4 y 0.5)
             if (isPerfectDisplay) currentDegrees += (0 - currentDegrees) * 0.5; 
             else currentDegrees += (targetDegrees - currentDegrees) * 0.4;
             
