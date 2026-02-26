@@ -7,7 +7,8 @@
     <title>TunerPro</title>
     
     <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="apple-touch-icon" href="favicon.png"> <meta name="apple-mobile-web-app-title" content="TunerPro">
+    <link rel="apple-touch-icon" href="icono-movil.png">
+    <meta name="apple-mobile-web-app-title" content="TunerPro">
     <meta name="application-name" content="TunerPro">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -43,7 +44,6 @@
             background-size: 25px 25px; position: relative; box-shadow: 0 0 40px rgba(0,0,0,0.9);
         }
 
-        /* Header */
         .header {
             padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;
             background: linear-gradient(to bottom, rgba(10,10,14,0.95), transparent); z-index: 20;
@@ -56,7 +56,6 @@
             box-shadow: 0 0 10px var(--primary-glow);
         }
 
-        /* Controles */
         .tuning-controls {
             display: flex; gap: 8px; padding: 0 20px; z-index: 20; align-items: center; justify-content: space-between;
         }
@@ -78,7 +77,6 @@
             box-shadow: 0 0 10px rgba(157, 0, 255, 0.4);
         }
 
-        /* Área Central */
         .tuner-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
         
         .instrument-image-container {
@@ -117,11 +115,15 @@
         .string-buttons { display: flex; flex-direction: column; justify-content: space-evenly; gap: 10px; }
         .string-wrapper { display: flex; align-items: center; gap: 15px; }
         .string-label { color: var(--danger); font-size: 12px; width: 50px; text-align: right; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); font-weight: bold;}
+        
         .string-btn {
             width: 50px; height: 50px; border-radius: 50%; background-color: var(--bg-panel); border: 2px solid #333;
             color: var(--text-main); font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;
             display: flex; justify-content: center; align-items: center; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            /* Importante para evitar menú contextual al mantener presionado en móvil */
+            user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
         }
+        
         .string-btn.active { 
             border-color: var(--primary); color: var(--bg-dark); background-color: var(--primary); 
             transform: scale(1.15) translateX(5px); box-shadow: 0 0 15px var(--primary-glow);
@@ -130,7 +132,6 @@
         #feedback-text { text-align: center; font-size: 18px; font-weight: bold; color: var(--text-muted); min-height: 25px; transition: 0.2s;}
         #freq-display { text-align: center; font-size: 14px; color: #888; font-family: monospace; letter-spacing: 1px;}
 
-        /* Nav */
         .bottom-nav {
             background-color: var(--bg-panel); display: flex; justify-content: space-around;
             padding: 15px 5px 25px 5px; border-top: 1px solid #222; z-index: 20; position: relative;
@@ -143,7 +144,6 @@
         .nav-item.active { color: var(--primary); text-shadow: 0 0 5px var(--primary-glow); }
         .nav-item.active svg { stroke: var(--primary); filter: drop-shadow(0 0 8px var(--primary-glow)); }
 
-        /* Modal */
         .modal-overlay {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85);
             z-index: 100; display: none; justify-content: center; align-items: center;
@@ -182,24 +182,16 @@
 
     <div class="tuner-area" id="tuner-area">
         <canvas id="waves-canvas"></canvas>
-
-        <div class="instrument-image-container">
-            <img id="instrument-img" src="" alt="Instrumento">
-        </div>
-        
+        <div class="instrument-image-container"><img id="instrument-img" src="" alt="Instrumento"></div>
         <div class="dial-container" id="dial">
             <div class="flat-sharp flat">b</div>
             <div class="target-circle" id="target-circle">✓</div>
             <div class="flat-sharp sharp">#</div>
             <div class="needle" id="needle"></div>
         </div>
-        
         <div id="feedback-text">Activa el micrófono</div>
         <div id="freq-display">-- Hz</div>
-
-        <div class="instrument-layout">
-            <div class="string-buttons" id="string-buttons"></div>
-        </div>
+        <div class="instrument-layout"><div class="string-buttons" id="string-buttons"></div></div>
     </div>
 
     <div class="bottom-nav">
@@ -221,9 +213,7 @@
         <div class="modal">
             <h3 id="modal-title">Personalizar Afinación</h3>
             <div class="custom-form" id="custom-form-container"></div>
-            <div class="modal-inputs">
-                <input type="text" id="song-name" placeholder="Nombre de afinación...">
-            </div>
+            <div class="modal-inputs"><input type="text" id="song-name" placeholder="Nombre de afinación..."></div>
             <div class="modal-btns">
                 <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
                 <button class="btn-save" onclick="saveTuning()">Guardar</button>
@@ -238,127 +228,125 @@
     const displayNotes = ["C", "C# / Db", "D", "D# / Eb", "E", "F", "F# / Gb", "G", "G# / Ab", "A", "A# / Bb", "B"];
 
     function getNoteInfoFromIndex(absoluteIndex) {
-        let octave = Math.floor(absoluteIndex / 12);
-        let noteIndex = absoluteIndex % 12;
+        let octave = Math.floor(absoluteIndex / 12); let noteIndex = absoluteIndex % 12;
         let freq = 440 * Math.pow(2, (absoluteIndex - 57) / 12); 
         return { internalName: baseNotes[noteIndex] + octave, displayName: `${displayNotes[noteIndex]}${octave}`, freq: freq };
     }
-
     function getAbsoluteIndex(noteString) {
-        let note = noteString.match(/[a-zA-Z#]+/)[0];
-        let octave = parseInt(noteString.match(/\d+/)[0]);
+        let note = noteString.match(/[a-zA-Z#]+/)[0]; let octave = parseInt(noteString.match(/\d+/)[0]);
         return (octave * 12) + baseNotes.indexOf(note);
     }
-
     function getTargetFreq(noteStr) {
         if (!isNaN(parseFloat(noteStr)) && !/[a-zA-Z]/.test(noteStr)) return parseFloat(noteStr);
         return getNoteInfoFromIndex(getAbsoluteIndex(noteStr)).freq;
     }
-
     function getCents(freq, targetFreq) { return Math.floor(1200 * Math.log2(freq / targetFreq)); }
-
     function getColorForCents(cents) {
         const t = Math.min(1, Math.abs(cents) / 50);
-        const r = Math.round(255 * t);
-        const g = Math.round(240 * (1 - t));
-        const b = Math.round(170 * t + 255 * (1 - t));
+        const r = Math.round(255 * t); const g = Math.round(240 * (1 - t)); const b = Math.round(170 * t + 255 * (1 - t));
         return { r, g, b };
     }
 
     // --- MOTOR GRÁFICO CANVAS ---
-    const canvas = document.getElementById('waves-canvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById('waves-canvas'); const ctx = canvas.getContext('2d');
     const tunerArea = document.getElementById('tuner-area');
-    
-    let trailSegments = []; 
-    let currentSegment = null;
-    const FALL_SPEED = 2.5; 
-    const MAX_AGE = 90; 
+    let trailSegments = []; let currentSegment = null; const FALL_SPEED = 2.5; const MAX_AGE = 90; 
 
-    function resizeCanvas() {
-        canvas.width = tunerArea.clientWidth;
-        canvas.height = tunerArea.clientHeight;
-    }
-    window.addEventListener('resize', resizeCanvas);
-    setTimeout(resizeCanvas, 100);
+    function resizeCanvas() { canvas.width = tunerArea.clientWidth; canvas.height = tunerArea.clientHeight; }
+    window.addEventListener('resize', resizeCanvas); setTimeout(resizeCanvas, 100);
 
     function drawWaves() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
         for (let s = trailSegments.length - 1; s >= 0; s--) {
             let segment = trailSegments[s];
             if (segment.length > 1) {
                 for (let i = 0; i < segment.length - 1; i++) {
-                    const p1 = segment[i];
-                    const p2 = segment[i+1];
+                    const p1 = segment[i]; const p2 = segment[i+1];
                     if (Math.abs(p1.age - p2.age) > 2) continue;
                     const alpha = Math.max(0, 1 - p1.age / MAX_AGE);
                     if (alpha <= 0) continue;
-
-                    ctx.beginPath();
-                    ctx.moveTo(p1.x, p1.y);
-                    ctx.lineTo(p2.x, p2.y);
-                    ctx.lineWidth = 3;
-                    ctx.lineCap = 'round';
-                    
+                    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+                    ctx.lineWidth = 3; ctx.lineCap = 'round';
                     const rgba = `rgba(${p1.color.r}, ${p1.color.g}, ${p1.color.b}, ${alpha})`;
-                    ctx.strokeStyle = rgba;
-                    ctx.shadowBlur = 6;
-                    ctx.shadowColor = rgba;
-                    ctx.stroke();
+                    ctx.strokeStyle = rgba; ctx.shadowBlur = 6; ctx.shadowColor = rgba; ctx.stroke();
                 }
             }
-
             let allDead = true;
             for (let i = 0; i < segment.length; i++) {
-                segment[i].y += FALL_SPEED;
-                segment[i].age += 1;
+                segment[i].y += FALL_SPEED; segment[i].age += 1;
                 if (segment[i].age <= MAX_AGE) allDead = false;
             }
             if (allDead) trailSegments.splice(s, 1);
         }
     }
 
-    // --- SONIDOS ---
+    // --- SINTETIZADOR CONTINUO (SUSTAIN) ---
     let synthContext;
     let hasPlayedSuccess = false; 
+    let isTonePlaying = false;
     let ignoreMicUntil = 0; 
-    let activeOscillators = []; 
+    let activeToneOscillators = []; 
+    let activeToneGain = null;
 
     function initSynth() {
         if (!synthContext) synthContext = new (window.AudioContext || window.webkitAudioContext)();
         if (synthContext.state === 'suspended') synthContext.resume();
     }
-    function stopAllSynths() { activeOscillators.forEach(osc => { try { osc.stop(); } catch(e){} }); activeOscillators = []; }
 
-    function playTone(frequency, isDrum) {
-        initSynth(); stopAllSynths(); 
-        ignoreMicUntil = Date.now() + 800; 
+    // Nueva función para sonido ininterrumpido al pulsar
+    function startTone(frequency, isDrum) {
+        initSynth(); 
+        stopTone(); // Asegura detener anteriores
 
         const osc = synthContext.createOscillator();
         const gainNode = synthContext.createGain();
         osc.connect(gainNode); gainNode.connect(synthContext.destination);
-        activeOscillators.push(osc);
+        
+        activeToneOscillators.push(osc);
+        activeToneGain = gainNode;
+        isTonePlaying = true;
 
         if (isDrum) {
             osc.type = 'sine'; osc.frequency.setValueAtTime(frequency, synthContext.currentTime);
             gainNode.gain.setValueAtTime(0, synthContext.currentTime);
+            // Ataque suave y se queda en volumen 0.8
             gainNode.gain.linearRampToValueAtTime(0.8, synthContext.currentTime + 0.1);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, synthContext.currentTime + 2.5);
-            osc.start(); osc.stop(synthContext.currentTime + 2.6);
         } else {
             osc.type = 'triangle'; osc.frequency.setValueAtTime(frequency, synthContext.currentTime);
             const pluck = synthContext.createOscillator(); pluck.type = 'sawtooth'; pluck.frequency.setValueAtTime(frequency, synthContext.currentTime);
             const filter = synthContext.createBiquadFilter(); filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(3000, synthContext.currentTime); filter.frequency.exponentialRampToValueAtTime(300, synthContext.currentTime + 1.5);
+            filter.frequency.setValueAtTime(3000, synthContext.currentTime); 
+            // Filtro baja para un sonido más cálido en sustain
+            filter.frequency.exponentialRampToValueAtTime(800, synthContext.currentTime + 0.5); 
+            
             osc.connect(filter); pluck.connect(filter); filter.connect(gainNode);
-            activeOscillators.push(pluck);
+            activeToneOscillators.push(pluck);
 
             gainNode.gain.setValueAtTime(0, synthContext.currentTime);
             gainNode.gain.linearRampToValueAtTime(0.8, synthContext.currentTime + 0.02);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, synthContext.currentTime + 3.0);
-            osc.start(); pluck.start(); osc.stop(synthContext.currentTime + 3.1); pluck.stop(synthContext.currentTime + 0.2);
+            // Cae un poco tras el golpe inicial pero se mantiene al 40% de volumen indefinidamente
+            gainNode.gain.exponentialRampToValueAtTime(0.4, synthContext.currentTime + 0.5); 
+            pluck.start();
         }
+        osc.start();
+    }
+
+    // Corta el sonido al soltar el dedo
+    function stopTone() {
+        if (activeToneGain) {
+            const now = synthContext.currentTime;
+            activeToneGain.gain.cancelScheduledValues(now);
+            activeToneGain.gain.setValueAtTime(activeToneGain.gain.value, now);
+            // Fade-out rápido de 0.1s para evitar "clics" de corte
+            activeToneGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); 
+            
+            let oscsToStop = activeToneOscillators;
+            setTimeout(() => { oscsToStop.forEach(o => { try { o.stop(); } catch(e){} }); }, 150);
+        }
+        activeToneOscillators = [];
+        activeToneGain = null;
+        isTonePlaying = false;
+        ignoreMicUntil = Date.now() + 300; // Da tiempo a que se disipe el eco antes de escuchar
     }
 
     function playSuccessDing() {
@@ -373,7 +361,7 @@
         osc.start(); osc.stop(synthContext.currentTime + 1.0);
     }
 
-    // --- DATOS GLOBALES Y ESTADO ---
+    // --- DATOS GLOBALES ---
     const defaultTunings = {
         guitar: [{ name: "Estándar", notes: ["E2", "A2", "D3", "G3", "B3", "E4"] }],
         ukulele: [{ name: "Estándar", notes: ["G4", "C4", "E4", "A4"] }],
@@ -389,13 +377,10 @@
     };
 
     const instrumentLabels = {
-        guitar: ["6ª", "5ª", "4ª", "3ª", "2ª", "1ª"],
-        ukulele: ["4ª", "3ª", "2ª", "1ª"],
-        bass: ["4ª", "3ª", "2ª", "1ª"],
-        drums: ["Bombo", "Caja", "Tom 1", "Tom 2", "Base"]
+        guitar: ["6ª", "5ª", "4ª", "3ª", "2ª", "1ª"], ukulele: ["4ª", "3ª", "2ª", "1ª"],
+        bass: ["4ª", "3ª", "2ª", "1ª"], drums: ["Bombo", "Caja", "Tom 1", "Tom 2", "Base"]
     };
 
-    // Recuperamos de LocalStorage el último instrumento y layout utilizado
     let currentInstrument = localStorage.getItem('last_instrument') || 'guitar'; 
     let currentLayout = localStorage.getItem('last_layout') || '3x3'; 
     let selectedStringIndex = -1; 
@@ -412,40 +397,28 @@
     const tuningListSelect = document.getElementById('tuning-list');
 
     function updateTuningDropdown() {
-        let prevValue = tuningListSelect.value;
-        tuningListSelect.innerHTML = '';
+        let prevValue = tuningListSelect.value; tuningListSelect.innerHTML = '';
         appData[currentInstrument].forEach((tuning, index) => {
-            let option = document.createElement('option');
-            option.value = index; option.text = tuning.name;
+            let option = document.createElement('option'); option.value = index; option.text = tuning.name;
             tuningListSelect.appendChild(option);
         });
-        
-        if(prevValue !== "" && prevValue < appData[currentInstrument].length) {
-            tuningListSelect.value = prevValue;
-        } else {
-            tuningListSelect.value = 0;
-        }
+        if(prevValue !== "" && prevValue < appData[currentInstrument].length) tuningListSelect.value = prevValue;
+        else tuningListSelect.value = 0;
     }
 
     tuningListSelect.addEventListener('change', (e) => { renderStrings(); });
 
     function setGuitarLayout(layoutType) {
-        currentLayout = layoutType;
-        localStorage.setItem('last_layout', currentLayout); // Guarda en memoria
+        currentLayout = layoutType; localStorage.setItem('last_layout', currentLayout); 
         document.getElementById('btn-inline').classList.toggle('active', layoutType === 'inline');
         document.getElementById('btn-3x3').classList.toggle('active', layoutType === '3x3');
         renderStrings();
     }
 
-    function renderInstrument() {
-        updateTuningDropdown();
-        renderStrings();
-    }
+    function renderInstrument() { updateTuningDropdown(); renderStrings(); }
 
     function renderStrings() {
-        let currentTuningList = appData[currentInstrument];
-        let selectedTuningIndex = tuningListSelect.value || 0;
-        let tuningNotes = currentTuningList[selectedTuningIndex].notes;
+        let tuningNotes = appData[currentInstrument][tuningListSelect.value || 0].notes;
         let labels = instrumentLabels[currentInstrument];
         
         btnContainer.innerHTML = ''; selectedStringIndex = -1;
@@ -463,22 +436,27 @@
             label.innerText = labels[originalIndex] || `${originalIndex + 1}ª`;
             
             let btn = document.createElement('div'); btn.className = 'string-btn';
+            if(!isNaN(parseFloat(noteFull)) && !/[a-zA-Z]/.test(noteFull)) btn.innerText = "Hz";
+            else btn.innerText = getNoteInfoFromIndex(getAbsoluteIndex(noteFull)).displayName.split(' ')[0].replace(/[0-9]/g, ''); 
             
-            if(!isNaN(parseFloat(noteFull)) && !/[a-zA-Z]/.test(noteFull)) {
-                btn.innerText = "Hz";
-            } else {
-                let noteInfo = getNoteInfoFromIndex(getAbsoluteIndex(noteFull));
-                btn.innerText = noteInfo.displayName.split(' ')[0].replace(/[0-9]/g, ''); 
-            }
+            // NUEVO SISTEMA DE EVENTOS (Mantener Pulsado)
+            // Ratón
+            btn.addEventListener('mousedown', (e) => { e.preventDefault(); handlePress(originalIndex, tuningNotes); });
+            btn.addEventListener('mouseup', stopTone);
+            btn.addEventListener('mouseleave', stopTone); // Por si arrastras el ratón fuera
             
-            btn.onclick = () => selectString(originalIndex, tuningNotes);
+            // Pantalla Táctil
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); handlePress(originalIndex, tuningNotes); }, {passive: false});
+            btn.addEventListener('touchend', stopTone);
+            btn.addEventListener('touchcancel', stopTone);
+
             wrapper.appendChild(label); wrapper.appendChild(btn); btnContainer.appendChild(wrapper);
         });
 
         if (isListening) feedbackText.innerText = "Selecciona parche o cuerda";
     }
 
-    function selectString(index, tuningNotes) {
+    function handlePress(index, tuningNotes) {
         selectedStringIndex = index;
         let visualIndex = tuningNotes.length - 1 - index;
         document.querySelectorAll('.string-btn').forEach((btn, i) => btn.classList.toggle('active', i === visualIndex));
@@ -490,56 +468,42 @@
         freqDisplay.style.color = "#888";
 
         hasPlayedSuccess = false;
-        playTone(targetFreq, currentInstrument === 'drums');
+        startTone(targetFreq, currentInstrument === 'drums');
     }
 
     function changeInstrument(instName) {
-        currentInstrument = instName;
-        localStorage.setItem('last_instrument', currentInstrument); // Guarda en memoria
-        
+        currentInstrument = instName; localStorage.setItem('last_instrument', currentInstrument);
         document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
-        document.getElementById('nav-' + currentInstrument).classList.add('active'); // Actualiza visualmente
-        
-        tuningListSelect.value = 0; 
-        renderInstrument();
+        document.getElementById('nav-' + currentInstrument).classList.add('active'); 
+        tuningListSelect.value = 0; renderInstrument();
     }
 
-    // --- LÓGICA DEL MODAL ---
-    const modal = document.getElementById('modal');
-    const customFormContainer = document.getElementById('custom-form-container');
-
+    // --- MODAL ---
+    const modal = document.getElementById('modal'); const customFormContainer = document.getElementById('custom-form-container');
     function openModal() {
         customFormContainer.innerHTML = '';
-        let baseNotes = defaultTunings[currentInstrument][0].notes;
-        let labels = instrumentLabels[currentInstrument];
-        
+        let baseNotes = defaultTunings[currentInstrument][0].notes; let labels = instrumentLabels[currentInstrument];
         document.getElementById('modal-title').innerText = `Afinación ${currentInstrument.charAt(0).toUpperCase() + currentInstrument.slice(1)}`;
 
         for(let i = baseNotes.length - 1; i >= 0; i--) {
             let row = document.createElement('div'); row.className = 'string-select-row';
-            
             let labelText = labels[i] || `${i+1}ª`;
             if (currentInstrument !== 'drums') {
                 if (i === baseNotes.length - 1) labelText += " (Aguda)";
                 if (i === 0) labelText += " (Grave)";
             }
-            
-            let label = document.createElement('span'); 
-            label.innerText = labelText;
+            let label = document.createElement('span'); label.innerText = labelText;
             
             if (currentInstrument === 'drums') {
-                let input = document.createElement('input');
-                input.type = 'number'; input.step = '0.1'; input.id = `input-c${i}`;
+                let input = document.createElement('input'); input.type = 'number'; input.step = '0.1'; input.id = `input-c${i}`;
                 input.value = getTargetFreq(baseNotes[i]).toFixed(1);
                 row.appendChild(label); row.appendChild(input);
             } else {
                 let stdNoteAbsolute = getAbsoluteIndex(baseNotes[i]);
                 let select = document.createElement('select'); select.id = `input-c${i}`;
-
                 for(let offset = 5; offset >= -5; offset--) {
                     let noteData = getNoteInfoFromIndex(stdNoteAbsolute + offset);
-                    let option = document.createElement('option');
-                    option.value = noteData.internalName; 
+                    let option = document.createElement('option'); option.value = noteData.internalName; 
                     let suffix = offset === 0 ? " [Estándar]" : (offset > 0 ? ` [+${offset}]` : ` [${offset}]`);
                     option.text = `${noteData.displayName}${suffix} -> ${noteData.freq.toFixed(1)}Hz`;
                     if(offset === 0) option.selected = true;
@@ -557,23 +521,17 @@
         let name = document.getElementById('song-name').value;
         if(!name) { alert("Ponle un nombre a tu afinación"); return; }
         let notes = []; let baseNotes = defaultTunings[currentInstrument][0].notes;
-        
         for(let i=0; i < baseNotes.length; i++) notes.push(document.getElementById(`input-c${i}`).value);
-        
         appData[currentInstrument].push({ name: name, notes: notes });
         localStorage.setItem(`tunings_${currentInstrument}_v7`, JSON.stringify(appData[currentInstrument]));
         document.getElementById('song-name').value = '';
-        
-        updateTuningDropdown(); 
-        tuningListSelect.value = appData[currentInstrument].length - 1; 
-        renderStrings();
-        closeModal();
+        updateTuningDropdown(); tuningListSelect.value = appData[currentInstrument].length - 1; 
+        renderStrings(); closeModal();
     }
 
-    // --- AUDIO Y DETECCIÓN AVANZADA ---
+    // --- AUDIO Y DETECCIÓN ---
     let audioContext, analyser, microphone;
-    let pitchHistory = []; let currentDegrees = 0; 
-    let lastValidPitch = 0; 
+    let pitchHistory = []; let currentDegrees = 0; let lastValidPitch = 0; 
 
     document.getElementById('start-btn').addEventListener('click', async function() {
         if(isListening) return;
@@ -593,8 +551,7 @@
                 let tuningNotes = appData[currentInstrument][tuningListSelect.value || 0].notes;
                 selectString(0, tuningNotes); 
             }
-            resizeCanvas();
-            updatePitch();
+            resizeCanvas(); updatePitch();
         } catch (err) { alert("Error con el micrófono. Comprueba los permisos de tu navegador."); }
     });
 
@@ -624,10 +581,12 @@
 
     function updatePitch() {
         requestAnimationFrame(updatePitch);
-        
         drawWaves();
 
-        if(Date.now() < ignoreMicUntil || selectedStringIndex === -1) return;
+        // BLOQUEO: Si el sintetizador está sonando, el micro NO escucha nada.
+        if(isTonePlaying || Date.now() < ignoreMicUntil || selectedStringIndex === -1) {
+            pitchHistory = []; lastValidPitch = 0; currentSegment = null; return;
+        }
 
         analyser.getFloatTimeDomainData(buffer);
         let ac = autoCorrelate(buffer, audioContext.sampleRate);
@@ -655,11 +614,8 @@
             if (isPerfectRealTime) lastPerfectTime = Date.now();
             let isPerfectDisplay = (Date.now() - lastPerfectTime) < 1500;
 
-            if (isPerfectDisplay) {
-                currentDegrees += (0 - currentDegrees) * 0.3; 
-            } else {
-                currentDegrees += (targetDegrees - currentDegrees) * 0.15;
-            }
+            if (isPerfectDisplay) currentDegrees += (0 - currentDegrees) * 0.3; 
+            else currentDegrees += (targetDegrees - currentDegrees) * 0.15;
             needle.style.transform = `rotate(${currentDegrees}deg)`;
 
             const needleBaseX = canvas.width / 2;
@@ -672,8 +628,7 @@
             const newPoint = { x: tipX, y: tipY, color: getColorForCents(centsOff), age: 0 };
             
             if (!currentSegment) {
-                currentSegment = [];
-                trailSegments.push(currentSegment);
+                currentSegment = []; trailSegments.push(currentSegment);
             }
             currentSegment.push(newPoint);
 
@@ -690,19 +645,14 @@
                 if (Math.abs(centsOff) > 10) hasPlayedSuccess = false; 
             }
         } else {
-            pitchHistory = [];
-            lastValidPitch = 0;
-            currentSegment = null; 
+            pitchHistory = []; lastValidPitch = 0; currentSegment = null; 
         }
     }
 
-    // Inicialización según la memoria guardada
     document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
     document.getElementById('nav-' + currentInstrument).classList.add('active');
-    
     document.getElementById('btn-inline').classList.toggle('active', currentLayout === 'inline');
     document.getElementById('btn-3x3').classList.toggle('active', currentLayout === '3x3');
-    
     renderInstrument();
 </script>
 
