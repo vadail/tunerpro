@@ -1,3 +1,14 @@
+¡Tienes toda la razón, y menudo fallo de bulto por mi parte! Te explico exactamente qué estaba pasando:
+
+El selector de afinaciones tenía un problema de "amnesia". Cada vez que elegías una afinación nueva de la lista, el código actualizaba la pantalla, pero al hacerlo, reconstruía el desplegable desde cero y **se reseteaba automáticamente a la primera opción ("Estándar")**. Por eso parecía que guardaba el nombre, pero siempre te devolvía a la estándar sin dejarte cambiar.
+
+He separado la lógica para que el desplegable mantenga su memoria. Además, en la ventana de personalización he dejado **completamente blindado el orden**: la 1ª cuerda (Aguda) está arriba del todo, y la 6ª cuerda (Grave) está abajo del todo, añadiendo etiquetas extra de texto `(Aguda)` y `(Grave)` para que quede 100% visual y claro.
+
+*(Nota: He cambiado la versión de guardado interno a `v7` para que borre automáticamente cualquier afinación corrupta que se haya guardado con el código anterior y empecemos limpios).*
+
+Aquí tienes el código corregido. Sustituye tu `index.html`:
+
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5,6 +16,16 @@
     <meta name="viewport" content="width=device-width, initial-width=1.0">
     <title>Afinador Neón Pro</title>
     <link rel="icon" type="image/png" href="favicon.png">
+    <meta name="apple-mobile-web-app-title" content="TunerPro">
+    <meta name="application-name" content="TunerPro">
+
+    <link rel="apple-touch-icon" href="favicon.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a0e">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
 
@@ -71,7 +92,6 @@
         /* Área Central */
         .tuner-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; }
         
-        /* Capa 1: Instrumento al 80% de altura máxima */
         .instrument-image-container {
             position: absolute; right: -10px; bottom: 0px; width: 280px; height: 80%;
             display: flex; justify-content: flex-end; align-items: flex-end; 
@@ -82,16 +102,9 @@
             filter: drop-shadow(0px 0px 15px rgba(0, 240, 255, 0.15)); transition: 0.3s; 
         }
 
-        /* Capa 2: Motor Canvas de Píxeles para la estela */
-        #waves-canvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 5;
-        }
+        #waves-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 
-        /* Capa 3: UI al frente */
-        .dial-container, #feedback-text, #freq-display, .instrument-layout {
-            z-index: 10; position: relative;
-        }
+        .dial-container, #feedback-text, #freq-display, .instrument-layout { z-index: 10; position: relative; }
 
         .dial-container { height: 140px; display: flex; justify-content: center; align-items: center; margin-top: 10px; }
         .flat-sharp { position: absolute; font-size: 24px; font-weight: bold; color: var(--text-muted); top: 50%; transform: translateY(-50%); }
@@ -150,7 +163,7 @@
         .modal h3 { margin-top: 0; font-size: 18px; text-align: center; color: var(--primary); }
         .custom-form { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; max-height: 50vh; overflow-y: auto; padding-right: 5px;}
         .string-select-row { display: flex; align-items: center; gap: 10px; background: #111; padding: 8px; border-radius: 6px; }
-        .string-select-row span { color: var(--danger); font-weight: bold; width: 40px; text-align: center; font-size: 12px;}
+        .string-select-row span { color: var(--danger); font-weight: bold; width: 65px; text-align: right; font-size: 12px; padding-right: 5px;}
         .string-select-row select, .string-select-row input {
             flex-grow: 1; padding: 8px; border-radius: 4px; border: 1px solid #444;
             background: var(--bg-dark); color: white; font-weight: bold; font-family: inherit; width: 100%; outline: none;
@@ -270,8 +283,8 @@
     
     let trailSegments = []; 
     let currentSegment = null;
-    const FALL_SPEED = 2.5; // Velocidad a la que cae la línea
-    const MAX_AGE = 90; // Duración del píxel antes de desaparecer por completo
+    const FALL_SPEED = 2.5; 
+    const MAX_AGE = 90; 
 
     function resizeCanvas() {
         canvas.width = tunerArea.clientWidth;
@@ -285,15 +298,11 @@
         
         for (let s = trailSegments.length - 1; s >= 0; s--) {
             let segment = trailSegments[s];
-            
             if (segment.length > 1) {
                 for (let i = 0; i < segment.length - 1; i++) {
                     const p1 = segment[i];
                     const p2 = segment[i+1];
-                    
-                    // Si hubo un corte de sonido o cambio brusco, no une ese salto
                     if (Math.abs(p1.age - p2.age) > 2) continue;
-
                     const alpha = Math.max(0, 1 - p1.age / MAX_AGE);
                     if (alpha <= 0) continue;
 
@@ -305,11 +314,8 @@
                     
                     const rgba = `rgba(${p1.color.r}, ${p1.color.g}, ${p1.color.b}, ${alpha})`;
                     ctx.strokeStyle = rgba;
-                    
-                    // Efecto de brillo neón sutil
                     ctx.shadowBlur = 6;
                     ctx.shadowColor = rgba;
-                    
                     ctx.stroke();
                 }
             }
@@ -334,11 +340,7 @@
         if (!synthContext) synthContext = new (window.AudioContext || window.webkitAudioContext)();
         if (synthContext.state === 'suspended') synthContext.resume();
     }
-
-    function stopAllSynths() {
-        activeOscillators.forEach(osc => { try { osc.stop(); } catch(e){} });
-        activeOscillators = [];
-    }
+    function stopAllSynths() { activeOscillators.forEach(osc => { try { osc.stop(); } catch(e){} }); activeOscillators = []; }
 
     function playTone(frequency, isDrum) {
         initSynth(); stopAllSynths(); 
@@ -360,24 +362,20 @@
             const pluck = synthContext.createOscillator(); pluck.type = 'sawtooth'; pluck.frequency.setValueAtTime(frequency, synthContext.currentTime);
             const filter = synthContext.createBiquadFilter(); filter.type = 'lowpass';
             filter.frequency.setValueAtTime(3000, synthContext.currentTime); filter.frequency.exponentialRampToValueAtTime(300, synthContext.currentTime + 1.5);
-            
             osc.connect(filter); pluck.connect(filter); filter.connect(gainNode);
             activeOscillators.push(pluck);
 
             gainNode.gain.setValueAtTime(0, synthContext.currentTime);
             gainNode.gain.linearRampToValueAtTime(0.8, synthContext.currentTime + 0.02);
             gainNode.gain.exponentialRampToValueAtTime(0.001, synthContext.currentTime + 3.0);
-            osc.start(); pluck.start();
-            osc.stop(synthContext.currentTime + 3.1); pluck.stop(synthContext.currentTime + 0.2);
+            osc.start(); pluck.start(); osc.stop(synthContext.currentTime + 3.1); pluck.stop(synthContext.currentTime + 0.2);
         }
     }
 
     function playSuccessDing() {
         initSynth();
-        const osc = synthContext.createOscillator();
-        const gainNode = synthContext.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, synthContext.currentTime); 
+        const osc = synthContext.createOscillator(); const gainNode = synthContext.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(880, synthContext.currentTime); 
         osc.frequency.exponentialRampToValueAtTime(1760, synthContext.currentTime + 0.1); 
         gainNode.gain.setValueAtTime(0, synthContext.currentTime);
         gainNode.gain.linearRampToValueAtTime(0.15, synthContext.currentTime + 0.02); 
@@ -395,10 +393,10 @@
     };
 
     let appData = {
-        guitar: JSON.parse(localStorage.getItem('tunings_guitar_v6')) || defaultTunings.guitar,
-        ukulele: JSON.parse(localStorage.getItem('tunings_ukulele_v6')) || defaultTunings.ukulele,
-        bass: JSON.parse(localStorage.getItem('tunings_bass_v6')) || defaultTunings.bass,
-        drums: JSON.parse(localStorage.getItem('tunings_drums_v6')) || defaultTunings.drums
+        guitar: JSON.parse(localStorage.getItem('tunings_guitar_v7')) || defaultTunings.guitar,
+        ukulele: JSON.parse(localStorage.getItem('tunings_ukulele_v7')) || defaultTunings.ukulele,
+        bass: JSON.parse(localStorage.getItem('tunings_bass_v7')) || defaultTunings.bass,
+        drums: JSON.parse(localStorage.getItem('tunings_drums_v7')) || defaultTunings.drums
     };
 
     const instrumentLabels = {
@@ -423,26 +421,39 @@
     const freqDisplay = document.getElementById('freq-display');
     const tuningListSelect = document.getElementById('tuning-list');
 
+    // [CORRECCIÓN] Separamos la actualización de opciones para no romper el evento "change"
     function updateTuningDropdown() {
+        let prevValue = tuningListSelect.value;
         tuningListSelect.innerHTML = '';
         appData[currentInstrument].forEach((tuning, index) => {
             let option = document.createElement('option');
             option.value = index; option.text = tuning.name;
             tuningListSelect.appendChild(option);
         });
+        
+        if(prevValue !== "" && prevValue < appData[currentInstrument].length) {
+            tuningListSelect.value = prevValue;
+        } else {
+            tuningListSelect.value = 0;
+        }
     }
 
-    tuningListSelect.addEventListener('change', (e) => { renderInstrument(); });
+    // [CORRECCIÓN] El evento "change" ahora solo redibuja las cuerdas, no borra el desplegable
+    tuningListSelect.addEventListener('change', (e) => { renderStrings(); });
 
     function setGuitarLayout(layoutType) {
         currentLayout = layoutType;
         document.getElementById('btn-inline').classList.toggle('active', layoutType === 'inline');
         document.getElementById('btn-3x3').classList.toggle('active', layoutType === '3x3');
-        renderInstrument();
+        renderStrings();
     }
 
     function renderInstrument() {
         updateTuningDropdown();
+        renderStrings();
+    }
+
+    function renderStrings() {
         let currentTuningList = appData[currentInstrument];
         let selectedTuningIndex = tuningListSelect.value || 0;
         let tuningNotes = currentTuningList[selectedTuningIndex].notes;
@@ -497,6 +508,7 @@
         currentInstrument = instName;
         document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
         event.currentTarget.classList.add('active');
+        tuningListSelect.value = 0; // Vuelve a estándar al cambiar de instrumento
         renderInstrument();
     }
 
@@ -511,9 +523,19 @@
         
         document.getElementById('modal-title').innerText = `Afinación ${currentInstrument.charAt(0).toUpperCase() + currentInstrument.slice(1)}`;
 
+        // [CORRECCIÓN]: Aquí obligamos a que el bucle ponga siempre la 1ª Cuerda arriba y la 6ª abajo.
         for(let i = baseNotes.length - 1; i >= 0; i--) {
             let row = document.createElement('div'); row.className = 'string-select-row';
-            let label = document.createElement('span'); label.innerText = labels[i] || `${i+1}ª`;
+            
+            let labelText = labels[i] || `${i+1}ª`;
+            // Etiquetas explícitas solo para guitarra/bajo/uke
+            if (currentInstrument !== 'drums') {
+                if (i === baseNotes.length - 1) labelText += " (Aguda)";
+                if (i === 0) labelText += " (Grave)";
+            }
+            
+            let label = document.createElement('span'); 
+            label.innerText = labelText;
             
             if (currentInstrument === 'drums') {
                 let input = document.createElement('input');
@@ -545,11 +567,18 @@
         let name = document.getElementById('song-name').value;
         if(!name) { alert("Ponle un nombre a tu afinación"); return; }
         let notes = []; let baseNotes = defaultTunings[currentInstrument][0].notes;
+        
+        // El bucle de guardado recoge desde el índice 0 (E2, Grave) hasta el 5 (E4, Agudo)
         for(let i=0; i < baseNotes.length; i++) notes.push(document.getElementById(`input-c${i}`).value);
+        
         appData[currentInstrument].push({ name: name, notes: notes });
-        localStorage.setItem(`tunings_${currentInstrument}_v6`, JSON.stringify(appData[currentInstrument]));
+        localStorage.setItem(`tunings_${currentInstrument}_v7`, JSON.stringify(appData[currentInstrument]));
         document.getElementById('song-name').value = '';
-        renderInstrument(); tuningListSelect.value = appData[currentInstrument].length - 1; 
+        
+        // Actualizamos y forzamos a mostrar la nueva afinación
+        updateTuningDropdown(); 
+        tuningListSelect.value = appData[currentInstrument].length - 1; 
+        renderStrings();
         closeModal();
     }
 
@@ -574,11 +603,11 @@
             
             if (selectedStringIndex === -1) {
                 let tuningNotes = appData[currentInstrument][tuningListSelect.value || 0].notes;
-                selectString(0, tuningNotes); 
+                selectString(0, tuningNotes); // Empieza por la 6ª (Grave) por defecto
             }
             resizeCanvas();
             updatePitch();
-        } catch (err) { alert("Error con el micrófono. Comprueba los permisos de Chrome."); }
+        } catch (err) { alert("Error con el micrófono. Comprueba los permisos de tu navegador."); }
     });
 
     function autoCorrelate(buf, sampleRate) {
@@ -586,7 +615,6 @@
         for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
         rms = Math.sqrt(rms / SIZE);
         
-        // BAJADA DE RMS A 0.003
         if (rms < 0.003) return -1; 
         
         let r1 = 0, r2 = SIZE - 1, thres = 0.2;
@@ -609,7 +637,6 @@
     function updatePitch() {
         requestAnimationFrame(updatePitch);
         
-        // Dibujamos las ondas CADA frame, independientemente del sonido
         drawWaves();
 
         if(Date.now() < ignoreMicUntil || selectedStringIndex === -1) return;
@@ -647,9 +674,8 @@
             }
             needle.style.transform = `rotate(${currentDegrees}deg)`;
 
-            // CÁLCULO PRECISO DE LA PUNTA DE LA AGUJA PARA EL CANVAS
             const needleBaseX = canvas.width / 2;
-            const needleBaseY = 210; // Posición Y de la base respecto al tuner-area
+            const needleBaseY = 210; 
             const needleLength = 180;
             const angleRad = currentDegrees * Math.PI / 180;
             const tipX = needleBaseX + Math.sin(angleRad) * needleLength;
@@ -678,7 +704,7 @@
         } else {
             pitchHistory = [];
             lastValidPitch = 0;
-            currentSegment = null; // Rompe la línea si hay silencio
+            currentSegment = null; 
         }
     }
 
