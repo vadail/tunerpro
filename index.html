@@ -143,20 +143,8 @@
             display: flex; justify-content: center; align-items: center; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
             user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
         }
-
-        /* --- ESTADO AFINADO (COMPLETADO) --- */
-        .string-btn.tuned {
-            border-color: var(--primary);
-            color: var(--primary);
-            background-color: rgba(0, 240, 255, 0.1); /* Ligero fondo cian */
-            box-shadow: 0 0 10px var(--primary-glow);
-        }
-
-        /* --- ESTADO ACTIVO (SOBREESCRIBE AL AFINADO MIENTRAS LO TOCAS) --- */
-        .string-btn.active { 
-            border-color: var(--primary); color: var(--bg-dark); background-color: var(--primary); 
-            transform: scale(1.15) translateX(5px); box-shadow: 0 0 15px var(--primary-glow);
-        }
+        .string-btn.tuned { border-color: var(--primary); color: var(--primary); background-color: rgba(0, 240, 255, 0.1); box-shadow: 0 0 10px var(--primary-glow); }
+        .string-btn.active { border-color: var(--primary); color: var(--bg-dark); background-color: var(--primary); transform: scale(1.15) translateX(5px); box-shadow: 0 0 15px var(--primary-glow); }
 
         .bottom-nav {
             background-color: var(--bg-panel); display: flex; justify-content: space-around;
@@ -391,9 +379,8 @@
     let isListening = false;
     let lastPerfectTime = 0; 
     
-    // --- NUEVO: ESTADO DE CUERDAS AFINADAS ---
     let tunedStrings = [];
-    let perfectFrames = 0; // Contador para evitar falsos positivos instantáneos
+    let perfectFrames = 0; 
 
     const btnContainer = document.getElementById('string-buttons');
     const instrumentImg = document.getElementById('instrument-img');
@@ -428,7 +415,6 @@
         let tuningNotes = appData[currentInstrument][tuningListSelect.value || 0].notes;
         let labels = instrumentLabels[currentInstrument];
         
-        // Resetea las cuerdas afinadas al cambiar el diseño o la afinación
         tunedStrings = new Array(tuningNotes.length).fill(false);
         perfectFrames = 0;
 
@@ -464,19 +450,16 @@
     }
 
     function handlePress(index, tuningNotes) {
-        // Si pulsas una cuerda que ya estaba marcada como perfecta, se resetea
-        if (tunedStrings[index]) {
-            tunedStrings[index] = false;
-        }
-        perfectFrames = 0; // Reseteamos el contador de estabilidad
+        if (tunedStrings[index]) { tunedStrings[index] = false; }
+        perfectFrames = 0; 
         
         selectedStringIndex = index;
         let visualIndex = tuningNotes.length - 1 - index;
         
         document.querySelectorAll('.string-btn').forEach((btn, i) => {
             let originalIndex = tuningNotes.length - 1 - i;
-            btn.classList.toggle('active', i === visualIndex); // La que estás tocando ahora
-            btn.classList.toggle('tuned', tunedStrings[originalIndex]); // Las que ya estaban terminadas
+            btn.classList.toggle('active', i === visualIndex); 
+            btn.classList.toggle('tuned', tunedStrings[originalIndex]); 
         });
         
         let targetFreq = getTargetFreq(tuningNotes[index]);
@@ -564,16 +547,34 @@
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             if (audioContext.state === 'suspended') await audioContext.resume(); 
             
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // --- NUEVO: PREAMPLIFICADOR PARA IPHONE ---
+            // 1. Pedimos el stream de forma "segura" para Safari (solo audio: true, sin constraints raras)
+            let stream;
+            try { 
+                stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, autoGainControl: false, noiseSuppression: false } }); 
+            } catch (e) { 
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true }); 
+            }
             
             microphone = audioContext.createMediaStreamSource(stream);
-            analyser = audioContext.createAnalyser(); analyser.fftSize = 2048;
-            microphone.connect(analyser); isListening = true;
+            
+            // 2. Creamos un amplificador (Gain) que multiplique la señal que el iPhone aisla
+            const micGain = audioContext.createGain();
+            micGain.gain.value = 4.0; // Multiplica x4 el volumen de entrada del micro
+
+            analyser = audioContext.createAnalyser(); 
+            analyser.fftSize = 2048;
+            
+            // 3. Conectamos la cadena: Micro -> Amplificador -> Analizador
+            microphone.connect(micGain);
+            micGain.connect(analyser);
+            
+            isListening = true;
             this.style.display = 'none'; 
             
             if (selectedStringIndex === -1) {
                 let tuningNotes = appData[currentInstrument][tuningListSelect.value || 0].notes;
-                handlePress(0, tuningNotes); // Activa la primera cuerda automáticamente
+                handlePress(0, tuningNotes); 
             }
             resizeCanvas(); updatePitch();
         } catch (err) { 
@@ -634,11 +635,9 @@
             
             let isPerfectRealTime = Math.abs(centsOff) < 3.5;
             
-            // Lógica de "Perfección" para marcar la cuerda como lista
             if (isPerfectRealTime) {
                 lastPerfectTime = Date.now();
                 perfectFrames++;
-                // Requiere mantener la afinación estable durante ~20 frames (aprox 300ms) para darla por buena
                 if (perfectFrames > 20 && !tunedStrings[selectedStringIndex]) {
                     tunedStrings[selectedStringIndex] = true;
                     let visualIndex = tuningNotes.length - 1 - selectedStringIndex;
@@ -646,7 +645,6 @@
                     if(btns[visualIndex]) btns[visualIndex].classList.add('tuned');
                 }
             } else {
-                // Si la afinación se aleja mucho (más de 5 cents), reseteamos el contador
                 if (Math.abs(centsOff) > 5) perfectFrames = 0; 
             }
 
